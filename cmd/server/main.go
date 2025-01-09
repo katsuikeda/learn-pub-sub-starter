@@ -31,7 +31,7 @@ func main() {
 
 	for {
 		words := gamelogic.GetInput()
-		if words == nil {
+		if len(words) == 0 {
 			continue
 		}
 
