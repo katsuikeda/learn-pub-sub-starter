@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
@@ -26,6 +24,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't create channel: %v", err)
 	}
+	defer publishCh.Close()
 
 	err = pubsub.PublishJSON(
 		publishCh,
@@ -38,10 +37,4 @@ func main() {
 		log.Fatalf("Couldn't publish time: %v", err)
 	}
 	fmt.Println("Pause message sent!")
-
-	// wait for ctrl+c
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	fmt.Println("Server is closing the connection and shutting down")
 }
