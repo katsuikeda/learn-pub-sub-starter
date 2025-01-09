@@ -31,7 +31,7 @@ func main() {
 
 	ch, queue, err := pubsub.DeclareAndBind(
 		conn,
-		"peril_direct",
+		routing.ExchangePerilDirect,
 		queueName,
 		routing.PauseKey,
 		pubsub.SimpleQueueTransient,
