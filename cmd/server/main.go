@@ -27,6 +27,19 @@ func main() {
 	}
 	defer publishCh.Close()
 
+	logChan, logQueue, err := pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.SimpleQueueDurable,
+	)
+	if err != nil {
+		log.Fatalf("Couldn't declare or bind queue: %v", err)
+	}
+	defer logChan.Close()
+	fmt.Printf("Queue %s declared and bound!\n", logQueue.Name)
+
 	gamelogic.PrintServerHelp()
 
 	for {
