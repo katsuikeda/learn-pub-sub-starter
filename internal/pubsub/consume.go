@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -102,7 +103,10 @@ func DeclareAndBind(
 		isAutoDelete, // delete when unused
 		isExclusive,  // exclusive
 		false,        // no-wait
-		nil,          // arguments
+		amqp.Table{
+			// This optional argument set the DLX for this queue
+			"x-dead-letter-exchange": routing.ExchangePerilDeadLetter,
+		}, // arguments
 	)
 	if err != nil {
 		return nil, amqp.Queue{}, fmt.Errorf("couldn't declare queue: %w", err)
