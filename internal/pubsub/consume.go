@@ -7,11 +7,19 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+type AckType int
+
 type SimpleQueueType int
 
 const (
 	SimpleQueueDurable SimpleQueueType = iota
 	SimpleQueueTransient
+)
+
+const (
+	Ack AckType = iota
+	NackRequeue
+	NackDiscard
 )
 
 func SubscribeJSON[T any](
@@ -20,7 +28,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	simpleQueueType SimpleQueueType,
-	handler func(T),
+	handler func(T) AckType,
 ) error {
 	ch, queue, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
 	if err != nil {
@@ -48,9 +56,23 @@ func SubscribeJSON[T any](
 				continue
 			}
 
-			handler(target)
-			if err := msg.Ack(false); err != nil {
-				fmt.Printf("Couldn't acknowledge message: %v\n", err)
+			ackType := handler(target)
+			switch ackType {
+			case Ack:
+				if err := msg.Ack(false); err != nil {
+					fmt.Printf("Couldn't acknowledge message: %v\n", err)
+				}
+				fmt.Println("Acked message")
+			case NackRequeue:
+				if err := msg.Nack(false, true); err != nil {
+					fmt.Printf("Couldn't nack message: %v\n", err)
+				}
+				fmt.Println("Nacked and requeued message")
+			case NackDiscard:
+				if err := msg.Nack(false, false); err != nil {
+					fmt.Printf("Couldn't discard message: %v\n", err)
+				}
+				fmt.Println("Nacked and discarded message")
 			}
 		}
 	}()
