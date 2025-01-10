@@ -25,22 +25,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't get username: %v", err)
 	}
-	queueName := routing.PauseKey + "." + username
 
-	ch, queue, err := pubsub.DeclareAndBind(
+	gs := gamelogic.NewGameState(username)
+
+	queueName := routing.PauseKey + "." + username
+	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
 		queueName,
 		routing.PauseKey,
 		pubsub.SimpleQueueTransient,
+		handlerPause(gs),
 	)
 	if err != nil {
-		log.Fatalf("Couldn't subscribe to pause: %v", err)
+		log.Fatalf("Coudn't subscribe to pause: %v", err)
 	}
-	defer ch.Close()
-	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
-
-	gs := gamelogic.NewGameState(username)
+	fmt.Println("Subscribe to pause!")
 
 	for {
 		words := gamelogic.GetInput()
