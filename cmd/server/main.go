@@ -25,6 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't create channel: %v", err)
 	}
+	// conn.Close() should handle closing channels, but here for explic cleanup
 	defer publishCh.Close()
 
 	logChan, logQueue, err := pubsub.DeclareAndBind(
@@ -35,8 +36,9 @@ func main() {
 		pubsub.SimpleQueueDurable,
 	)
 	if err != nil {
-		log.Fatalf("Couldn't declare or bind queue: %v", err)
+		log.Fatalf("Couldn't subscribe to pause: %v", err)
 	}
+	// conn.Close() should handle closing channels, but here for explic cleanup
 	defer logChan.Close()
 	fmt.Printf("Queue %s declared and bound!\n", logQueue.Name)
 
