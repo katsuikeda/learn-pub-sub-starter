@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 
@@ -23,6 +25,31 @@ const (
 	NackDiscard
 )
 
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	simpleQueueType SimpleQueueType,
+	handler func(T) AckType,
+) error {
+	return subscribe[T](
+		conn,
+		exchange,
+		queueName,
+		key,
+		simpleQueueType,
+		handler,
+		func(data []byte) (T, error) {
+			buf := bytes.NewBuffer(data)
+			decoder := gob.NewDecoder(buf)
+			var content T
+			err := decoder.Decode(&content)
+			return content, err
+		},
+	)
+}
+
 func SubscribeJSON[T any](
 	conn *amqp.Connection,
 	exchange,
@@ -30,6 +57,30 @@ func SubscribeJSON[T any](
 	key string,
 	simpleQueueType SimpleQueueType,
 	handler func(T) AckType,
+) error {
+	return subscribe[T](
+		conn,
+		exchange,
+		queueName,
+		key,
+		simpleQueueType,
+		handler,
+		func(data []byte) (T, error) {
+			var content T
+			err := json.Unmarshal(data, &content)
+			return content, err
+		},
+	)
+}
+
+func subscribe[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	simpleQueueType SimpleQueueType,
+	handler func(T) AckType,
+	unmarshaller func([]byte) (T, error),
 ) error {
 	ch, queue, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
 	if err != nil {
@@ -51,13 +102,13 @@ func SubscribeJSON[T any](
 
 	go func() {
 		for msg := range deliveryChan {
-			var target T
-			if err := json.Unmarshal(msg.Body, &target); err != nil {
-				fmt.Printf("Couldn't unmarshal message: %v\n", err)
+			content, err := unmarshaller(msg.Body)
+			if err != nil {
+				fmt.Printf("Couldn't unmarshal message: %v", err)
 				continue
 			}
 
-			ackType := handler(target)
+			ackType := handler(content)
 			switch ackType {
 			case Ack:
 				if err := msg.Ack(false); err != nil {
@@ -90,16 +141,12 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, fmt.Errorf("couldn't create channel: %w", err)
 	}
 
-	isDurable := simpleQueueType == SimpleQueueDurable
-	isAutoDelete := simpleQueueType != SimpleQueueDurable
-	isExclusive := simpleQueueType != SimpleQueueDurable
-
 	queue, err := ch.QueueDeclare(
-		queueName,    // name
-		isDurable,    // durable
-		isAutoDelete, // delete when unused
-		isExclusive,  // exclusive
-		false,        // no-wait
+		queueName,                             // name
+		simpleQueueType == SimpleQueueDurable, // durable
+		simpleQueueType != SimpleQueueDurable, // delete when unused
+		simpleQueueType != SimpleQueueDurable, // exclusive
+		false,                                 // no-wait
 		amqp.Table{
 			// This optional argument set the DLX for this queue
 			"x-dead-letter-exchange": routing.ExchangePerilDeadLetter,

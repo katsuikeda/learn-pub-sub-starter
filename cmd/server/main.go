@@ -28,19 +28,18 @@ func main() {
 	// conn.Close() should handle closing channels, but here for explic cleanup
 	defer publishCh.Close()
 
-	logChan, logQueue, err := pubsub.DeclareAndBind(
+	// GameLog subscription
+	err = pubsub.SubscribeGob(
 		conn,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.SimpleQueueDurable,
+		handlerGameLog(),
 	)
 	if err != nil {
-		log.Fatalf("Couldn't subscribe to pause: %v", err)
+		log.Fatalf("Couldn't subscribe to game log: %v", err)
 	}
-	// conn.Close() should handle closing channels, but here for explic cleanup
-	defer logChan.Close()
-	fmt.Printf("Queue %s declared and bound!\n", logQueue.Name)
 
 	gamelogic.PrintServerHelp()
 
