@@ -87,6 +87,10 @@ func subscribe[T any](
 		return fmt.Errorf("couldn't declare and bind queue: %w", err)
 	}
 
+	// Prefetch configuration
+	if err := ch.Qos(10, 0, false); err != nil {
+		return fmt.Errorf("couldn't set channel prefetch count: %w", err)
+	}
 	deliveryChan, err := ch.Consume(
 		queue.Name, // queue
 		"",         // consumer

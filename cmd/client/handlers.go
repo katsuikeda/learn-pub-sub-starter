@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -73,15 +72,10 @@ func handlerWar(gs *gamelogic.GameState, publishCh *amqp.Channel) func(gamelogic
 		}
 
 		// Publish game log whenever a war happens
-		if err := pubsub.PublishGob(
+		if err := publishGameLog(
 			publishCh,
-			routing.ExchangePerilTopic,
-			routing.GameLogSlug+"."+rw.Attacker.Username,
-			routing.GameLog{
-				CurrentTime: time.Now(),
-				Message:     message,
-				Username:    rw.Attacker.Username,
-			},
+			gs.GetUsername(),
+			message,
 		); err != nil {
 			fmt.Printf("error: %v\n", err)
 			return pubsub.NackRequeue
